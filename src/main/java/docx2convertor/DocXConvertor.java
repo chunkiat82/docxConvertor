@@ -1,6 +1,8 @@
 package docx2convertor;
 
+import java.io.File;
 import java.io.OutputStream;
+import java.util.ArrayList;
 
 import org.docx4j.Docx4J;
 import org.docx4j.convert.out.FOSettings;
@@ -41,7 +43,7 @@ public class DocXConvertor {
 		inputfilepath = null; // to generate a docx (and PDF output) containing
 								// font samples
 
-		inputfilepath = System.getProperty("user.dir") + "/src/main/resources/sample.docx";
+		inputfilepath = System.getProperty("user.dir") + "/src/main/resources";
 
 		saveFO = true;
 	}
@@ -72,6 +74,7 @@ public class DocXConvertor {
 		PhysicalFonts.setRegex(regex);
 
 		// Document loading (required)
+		ArrayList fileList = new ArrayList<File>();
 		WordprocessingMLPackage wordMLPackage;
 		if (inputfilepath == null) {
 			// Create a docx
@@ -81,16 +84,27 @@ public class DocXConvertor {
 		} else {
 			// Load .docx or Flat OPC .xml
 			System.out.println("Loading file from " + inputfilepath);
-			wordMLPackage = WordprocessingMLPackage.load(new java.io.File(inputfilepath));
+			//create a folder, get all file into ArrayList except .DS_Store
+			File folder = new File(inputfilepath);
+			File[] fileArr = folder.listFiles();
+			for (File fileObj : fileArr) {
+				if (!fileObj.getName().contains(".DS_Store")) {
+					fileList.add(fileObj);
+				}
+			}
 		}
 
+		//go through all files and convert to PDF
+		for (Object fileObj : fileList) {
+			File file = (File) fileObj;
+			wordMLPackage = WordprocessingMLPackage.load(file);
 		// Refresh the values of DOCPROPERTY fields
-		FieldUpdater updater = new FieldUpdater(wordMLPackage);
-		updater.update(true);
+			FieldUpdater updater = new FieldUpdater(wordMLPackage);
+			updater.update(true);
 
 		// Set up font mapper (optional)
-		Mapper fontMapper = new IdentityPlusMapper();
-		wordMLPackage.setFontMapper(fontMapper);
+			Mapper fontMapper = new IdentityPlusMapper();
+			wordMLPackage.setFontMapper(fontMapper);
 
 		// .. example of mapping font Times New Roman which doesn't have certain
 		// Arabic glyphs
@@ -99,7 +113,7 @@ public class DocXConvertor {
 		// eg Glyph "ج" (0x62c, afii57420) not available in font
 		// "TimesNewRomanPS-ItalicMT".
 		// to a font which does
-		PhysicalFont font = PhysicalFonts.get("Arial Unicode MS");
+			PhysicalFont font = PhysicalFonts.get("Arial Unicode MS");
 		// make sure this is in your regex (if any)!!!
 		// if (font!=null) {
 		// fontMapper.put("Times New Roman", font);
@@ -109,11 +123,11 @@ public class DocXConvertor {
 
 		// FO exporter setup (required)
 		// .. the FOSettings object
-		FOSettings foSettings = Docx4J.createFOSettings();
-		if (saveFO) {
-			foSettings.setFoDumpFile(new java.io.File(inputfilepath + ".fo"));
-		}
-		foSettings.setWmlPackage(wordMLPackage);
+			FOSettings foSettings = Docx4J.createFOSettings();
+			if (saveFO) {
+				foSettings.setFoDumpFile(new java.io.File(inputfilepath + ".fo"));
+			}
+			foSettings.setWmlPackage(wordMLPackage);
 
 		// Document format:
 		// The default implementation of the FORenderer that uses Apache Fop
@@ -128,19 +142,19 @@ public class DocXConvertor {
 		// foSettings.setApacheFopMime(FOSettings.INTERNAL_FO_MIME);
 
 		// exporter writes to an OutputStream.
-		String outputfilepath;
-		if (inputfilepath == null) {
-			outputfilepath = System.getProperty("user.dir") + "/OUT_FontContent.pdf";
-		} else {
-			outputfilepath = inputfilepath + ".pdf";
-		}
-		OutputStream os = new java.io.FileOutputStream(outputfilepath);
+			String outputfilepath;
+			if (inputfilepath == null) {
+				outputfilepath = System.getProperty("user.dir") + "/OUT_FontContent.pdf";
+			} else {
+				outputfilepath = inputfilepath + "/" + file.getName() + ".pdf";
+			}
+			OutputStream os = new java.io.FileOutputStream(outputfilepath);
 
 		// Specify whether PDF export uses XSLT or not to create the FO
 		// (XSLT takes longer, but is more complete).
 
 		// Don't care what type of exporter you use
-		Docx4J.toFO(foSettings, os, Docx4J.FLAG_EXPORT_PREFER_XSL);
+			Docx4J.toFO(foSettings, os, Docx4J.FLAG_EXPORT_PREFER_XSL);
 
 		// Prefer the exporter, that uses a xsl transformation
 		// Docx4J.toFO(foSettings, os, Docx4J.FLAG_EXPORT_PREFER_XSL);
@@ -150,17 +164,17 @@ public class DocXConvertor {
 		// .. faster, but not yet at feature parity
 		// Docx4J.toFO(foSettings, os, Docx4J.FLAG_EXPORT_PREFER_NONXSL);
 
-		System.out.println("Saved: " + outputfilepath);
+			System.out.println("Saved: " + outputfilepath);
 
 		// Clean up, so any ObfuscatedFontPart temp files can be deleted
-		if (wordMLPackage.getMainDocumentPart().getFontTablePart() != null) {
-			wordMLPackage.getMainDocumentPart().getFontTablePart().deleteEmbeddedFontTempFiles();
-		}
+			if (wordMLPackage.getMainDocumentPart().getFontTablePart() != null) {
+				wordMLPackage.getMainDocumentPart().getFontTablePart().deleteEmbeddedFontTempFiles();
+			}
 		// This would also do it, via finalize() methods
-		updater = null;
-		foSettings = null;
-		wordMLPackage = null;
-
+			updater = null;
+			foSettings = null;
+			wordMLPackage = null;
+		}
 	}
 
 	protected static String inputfilepath;
